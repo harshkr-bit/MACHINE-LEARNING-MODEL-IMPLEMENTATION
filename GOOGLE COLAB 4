@@ -1,0 +1,70 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+csv_file = "sms_spam.csv"
+
+if not os.path.exists(csv_file):
+    print("⚠️ CSV not found, creating a sample dataset...")
+    sample_data = {
+        'label': ['ham', 'spam', 'ham', 'spam', 'ham'],
+        'message': [
+            "Hi, how are you doing today?",
+            "You’ve won $1,000,000! Click to claim.",
+            "Let's meet at 5pm",
+            "Claim your free prize now!",
+            "Are you coming to the meeting?"
+        ]
+    }
+    pd.DataFrame(sample_data).to_csv(csv_file, index=False)
+    print("✅ Sample dataset created.")
+
+df = pd.read_csv(csv_file)
+df['label_num'] = df.label.map({'ham': 0, 'spam': 1})  
+X = df['message']
+y = df['label_num']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+vectorizer = CountVectorizer()
+X_train_vec = vectorizer.fit_transform(X_train)
+X_test_vec = vectorizer.transform(X_test)
+
+model = MultinomialNB()
+model.fit(X_train_vec, y_train)
+
+y_pred = model.predict(X_test_vec)
+accuracy = accuracy_score(y_test, y_pred)
+print(f"✅ Accuracy: {accuracy:.4f}")
+
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(5, 4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Ham', 'Spam'], yticklabels=['Ham', 'Spam'])
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+print("\n📄 Classification Report:")
+print(classification_report(y_test, y_pred, target_names=['Ham', 'Spam']))
+
+custom_messages = [
+    "Congratulations! You’ve won a free ticket to Bahamas! Reply WIN to claim.",
+    "Hey, are we still on for lunch tomorrow?",
+    "Exclusive offer just for you! Call now.",
+    "Can we reschedule our meeting to 3 PM?"
+]
+
+custom_vec = vectorizer.transform(custom_messages)
+predictions = model.predict(custom_vec)
+
+print("\n🔍 Custom Predictions:")
+for msg, pred in zip(custom_messages, predictions):
+    print(f"Message: '{msg}' => {'SPAM' if pred else 'HAM'}")
